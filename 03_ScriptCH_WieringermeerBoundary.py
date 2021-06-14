@@ -116,9 +116,10 @@ def BndqWatTop(t, bPar):
     for ii in range(len(t)):
         xy, md_ind, t_ind = np.intersect1d(bPar.meteo_data['num_date'], np.ceil(t[ii]), return_indices=True)
         rf = bPar.meteo_data['rain_station'].iloc[md_ind].values
+        print(rf)
         qBnd[ii] = -rf
     return qBnd
-
+    print(qBnd)
 
 
 bPar = {'topBndFuncHeat': BndTTop,
