@@ -2,7 +2,7 @@
 """
 Created on Fri May 21 10:11:54 2021
 
-@author: emmak
+@author: emmalittle
 """
 
 # %% 
@@ -13,7 +13,6 @@ import matplotlib.pyplot as plt
 import WaterFlow as WF
 
 # Definition of the notes and internodes:
-
 # Domain
 nIN = 101   # Number of internodes.
 # soil profile of one meter (note: original soil profile was 15 m for the heat flow problem)
@@ -38,9 +37,6 @@ mDim = {'zN' : zN,
         }
 mDim = pd.Series(mDim)
 
-rhow = 1000     # [kg/m3] density of water
-g = 9.81        # [m/s/s] gravitational constant
-
 #read meteo data
 meteo_data  = pd.read_excel('WieringermeerData_Meteo.xlsx')
 meteo_data['num_date'] = meteo_data['datetime'].astype(np.int64)/(1e9*3600*24)
@@ -50,31 +46,34 @@ meteo_data.set_index('datetime',inplace=True)
 t_range = meteo_data['num_date'][:-1]
 taxis = meteo_data.index[:-1]
 
-def BndQTop(t, bPar):   # Inflow boundry condition (I think) ? Yep.
+def BndQTop(t, bPar): 
     #bndTop = bPar.Topflow + 0.1 * bPar.Topflow * np.cos(t*0.1)     # Varying inflow between 0.1 +/- Topflow m^3/s ? (not sure about units)
     #bndTop = bPar.Topflow * (t > bPar.tWMin) * (t < bPar.tWMax) * (0.1 * np.abs( np.cos(t*.1)))
-    #bndTop = bPar.Topflow * (t > bPar.tWMin) * (t < bPar.tWMax)
-    if np.size(t)==1:
-        t = np.array([t])
-    bndTop = np.zeros((len(t)))
+    bndTop = bPar.Topflow 
+   
+    # if np.size(t)==1:
+    #     t = np.array([t])
+    # bndTop = np.zeros((len(t)))
     
-    for ii in range(len(t)):
-        xy, md_ind, t_ind = np.intersect1d(bPar.meteo_data['num_date'], np.ceil(t[ii]), return_indices=True)
-        rf = bPar.meteo_data['rain_station'].iloc[md_ind].values
-        bndTop[ii] = -rf
+    # for ii in range(len(t)):
+    #     xy, md_ind, t_ind = np.intersect1d(bPar.meteo_data['num_date'], np.ceil(t[ii]), return_indices=True)
+    #     rf = bPar.meteo_data['rain_station'].iloc[md_ind].values
+    #     bndTop[ii] = -rf
     return bndTop
 
-def pEV(t, bPar):   # Potential Evaporation for use in Root Sink Equation
+def pEV(t, bPar,sPar):   # Potential Evaporation for use in Root Sink Equation
     if np.size(t)==1:
         t = np.array([t])
     potEv = np.zeros((len(t)))
     
     for ii in range(len(t)):
         xy, md_ind, t_ind = np.intersect1d(bPar.meteo_data['num_date'], np.ceil(t[ii]), return_indices=True)
-        rf = bPar.meteo_data['pEV'].iloc[md_ind].values
-        potEv[ii] = -rf
-        plt.plot(potEv)
+        evap = bPar.meteo_data['pEV'].iloc[md_ind].values
+        potEv[ii] = evap
     return potEv
+
+rhow = 1000     # [kg/m3] density of water
+g = 9.81        # [m/s/s] gravitational constant
 
 # Definition of the Boundary Parameters: collect boundary parameters in a named tuple boundpar. Has to have something to do with flow rate
 bPar = {'Topflow': -0.01,    # Top, placeholder value    #no flow = 0, otherwise e.g. -0.1
@@ -163,6 +162,15 @@ ax3.grid(b=True)
 ax3.set_xlabel('water content [-]')
 ax3.set_ylabel('depth [m]')
 ax3.set_title('Water content vs depth, time dependend top flux and Robin boundary condition')
+
+fig4, ax4 = plt.subplots(figsize=(7, 7))
+for ii in np.arange(0, hwODE.t.size, 1):
+    ax4.plot(pEV(ii,bPar), '-')
+
+ax4.grid(b=True)
+ax4.set_xlabel('water content [-]')
+ax4.set_ylabel('depth [m]')
+ax4.set_title('W')
 
 # Possibly plotting the water flux
 # fig4, ax4 = plt.subplots(figsize=(7, 4))

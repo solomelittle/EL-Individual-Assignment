@@ -13,8 +13,6 @@ import scipy.sparse as sp
 import MyTicToc as mt
 import matplotlib.pyplot as plt
 
-
-
 # %% Defining variables as functions
 
 def Seff(hw, sPar):  # Effective saturation
@@ -67,43 +65,25 @@ def K(hw, sPar, mDim):  # Kskr used in waterflux equation
     k_IN[nIN - 1] = k_N[nIN - 2]
     
     return k_IN
-#%% Roots
-# def rootlength(hw, mDim):
-#     nr,nc = hw.shape
-#     nIn = mDim.nIN
-#     zetaL= 7500 # m/m3 empirical
-#     rhoL = 20.15 # empirical
-#     Lrv = zetaL*np.exp(rhoL*zIN)*rnp.ones([nIN,nc],dtype=hw.dtype)
-#     return Lrv
+# %% Roots
+def rootlength(hw, mDim):
+    nr,nc = hw.shape
+    zIN = mDim.zIN
+    nIN = mDim.nIN
+    zetaL= 7500 # m/m3 empirical
+    rhoL = 20.15 # empirical
+    Lrv = np.zeros([nIN],dtype=hw.dtype)
+    ii = np.arange(0, nIN)
+    Lrv[ii] = zetaL*np.exp(rhoL*zIN)/(ii*zIN)
+    return Lrv
 
-# def alpha_root(hw):
-#     a= np.ones([nIN,nc], dtype=hw.dtype)
-#     #From Assignment outline
-# def beta_root(hw,mDim):
-#     nr,nc = hw.shape
-#     nIn = mDim.nIN
-#     b = 0.1*np.ones([nIN,nc],dtype=hw.dtype)
-#     #ii = np.arange(1, nIN - 1)
-#     #b[ii]= Lrv[ii]*dzN/(CUMULATIVELrv*dzN)
-#     return b
+    #From Assignment outline
+def beta_root(hw,mDim):
+    nr,nc = hw.shape
+    nIN = mDim.nIN
+    b = 0.1*np.ones([nIN,nc],dtype=hw.dtype)
+    return b
 
-# def S_root(hw,sPar, mDim): #sink term
-#     nIN = mDim.nIN
-#     nr,nc = hw.shape
-#     beta = beta_root(hw,mDim)
-#     potEv = sPar.potEv(t, mDim)
-#     if hw<-15:
-#         alpha = 0
-#     if hw in range(-15,-8.5):
-#         alpha = 0.1538*hw+2.307
-#     if hw in range(-1,-8.5):
-#         alpha = 1
-#     if hw in range(0,-1):
-#         alpha = -hw
-#       # internode fluxes
-#     S = np.zeros([nIN,nc],dtype=hw.dtype)   
-#     ii = np.arange(1,nIN-2) # bottom boundary defined in water flux
-#     S[ii] = alpha[ii]*beta[ii]*potEv
     
 # %% Flux & Divergence Functions
 
@@ -136,13 +116,35 @@ def DivWaterFlux(t, hw, sPar, mDim, bPar): # Divergent water flux defined at nod
     qw = WaterFlux(t, hw, sPar, mDim, bPar)
     Cstarwi = diffWaterCapP(hw, sPar, mDim)
     divqw = np.zeros([nN, nc],dtype=hw.dtype)
-    
     # Calculate divergence of flux for all nodes
     ii = np.arange(0, nN)
     divqw[ii] = -(qw[ii + 1] - qw[ii]) \
                    / (dzIN[ii] * Cstarwi[ii])
     
     return divqw
+
+def S_Root_DivWaterFlux (t,hw,sPar,mDim, bPar):
+    nIN = mDim.nIN
+    nr,nc = hw.shape
+    divqw=DivWaterFlux(t, hw, sPar, mDim, bPar)
+    beta = beta_root(hw,mDim)
+    potEv = sPar.potEv(t, bPar, sPar)
+    S = np.zeros([nIN,nc],dtype=hw.dtype)
+    alpha= np.ones([nIN,nc], dtype=hw.dtype)
+    ii = np.arange(1,nIN-2) # bottom boundary defined in water flux
+    if ii<-15:
+        alpha[ii] = 0
+    if ii in range(-15,-8.5):
+        alpha[ii] = 0.1538*ii+2.307
+    if ii in range(-1,-8.5):
+        alpha[ii] = 1
+    if ii in range(0,-1):
+        alpha[ii] = -ii
+        
+    S[ii] = alpha[ii]*beta[ii]*sPar.potEv(t,sPar,bPar)
+    
+    rateWF=divqw-S
+    return rateWF
 
 # %% Solver (Integration Function)
 
@@ -151,7 +153,7 @@ def IntegrateWF(tRange, hwIni, sPar, mDim, bPar): # need tRange and iniSt
     def dYdt(t, hw):
         if len(hw.shape)==1:
             hw = hw.reshape(mDim.nN,1)
-        rates = DivWaterFlux(t, hw, sPar, mDim, bPar)
+        rates = S_Root_DivWaterFlux(t, hw, sPar, mDim, bPar)
         return rates
 
     def jacFun(t,y):
