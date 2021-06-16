@@ -23,15 +23,6 @@ def thFun(hw, sP):
     return th
 
 
-def CFun(hw, sP):
-    #Differential water capacity, dtheta/dhw (analytical)
-    hc = -hw
-    Se = SeFun(hw, sP)
-    dSedh = sP.vGA * sP.vGM / (1 - sP.vGM) * Se ** (1 / sP.vGM) * \
-            (1 - Se ** (1 / sP.vGM)) ** sP.vGM * (hc > 0) + (hc <= 0) * 0
-    return (sP.thS - sP.thR) * dSedh
-
-
 def CFunCmplx(hw, sP):
     #Differential water capacity, dtheta/dhw (complex derivative)
     dh = np.sqrt(np.finfo(float).eps)
@@ -91,7 +82,7 @@ def alpharoot(hw, sP):
     h2 = sP.h2
     h3 = sP.h3
     h4 = sP.h4
-    a=(hw-h4)/(h3-h4)*(hw>=h4)*(hw<h3)+(hw>h3)*(hw<h2)+hw/h2*(hw<h1)*(hw>h2)
+    a=h1*(hw<=h4)+h1*(hw>=h1)+(hw-h4)/(h3-h4)*(hw>h4)*(hw<h3)+(hw>h3)*(hw<h2)+(hw-h1)/(h2-h1)*(hw<h1)*(hw>h2)
   
     return a
 
@@ -143,7 +134,7 @@ def WatFlux(t, hw, sP, mDim, bPar):
     ii = np.arange(1, nIN - 1)  # does not include last element
     qw[ii] = -kIN[ii] * ((hw[ii] - hw[ii - 1]) / dzN[ii - 1] + 1)
 
-    if bPar.bottomTypeWat.lower() == 'gravity':
+    if bPar.bottomTypeWat.lower() == 'Gravity':
         qw[0] = -kIN[0]
     else:
         qw[0] = -bPar.kRobBotWat * (hw[0]- bPar.hwBotBnd)
@@ -189,19 +180,15 @@ def IntegrateWF(tRange, iniSt, sPar, mDim, bPar):
         return rates
 
     def jacFun(t,y):
-        if len(y.shape)==1:
-            y = y.reshape(mDim.nN,1)
-
-        nr, nc = y.shape
-        dh = np.sqrt(np.finfo(float).eps)
-        jac = np.zeros((nr,nr))
-        for ii in np.arange(nr):
-            ycmplx = y.copy().astype(complex)
-            ycmplx[ii] = ycmplx[ii] + 1j*dh
-            dfdy = dYdt(t, ycmplx).imag/dh
-            jac[:,ii] = dfdy.squeeze()
-        #return sp.coo_matrix(jac)
-        return jac
+       if len(y.shape)==1:
+           y = y.reshape (mDim.nN, 1)
+       nr,nc = y.shape
+       dh = np.sqrt(np.finfo(float).eps)
+       ycmplx = np.repeat(y,nr,axis=1).astype(complex)
+       c_ex = np.eye(nr)*1j*dh
+       ycmplx = ycmplx + c_ex
+       dfdy = dYdt(t,ycmplx).imag/dh
+       return sp.coo_matrix(dfdy)
     
 
     # solve rate equatio
@@ -209,7 +196,7 @@ def IntegrateWF(tRange, iniSt, sPar, mDim, bPar):
     int_result = spi.solve_ivp(dYdt, t_span, iniSt.squeeze(),
                                method='BDF', vectorized=True, jac=jacFun, 
                                t_eval=tRange,
-                               rtol=1e-6)
+                               rtol=1e-7)
 
     return int_result
 

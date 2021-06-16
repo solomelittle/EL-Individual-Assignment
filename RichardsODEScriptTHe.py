@@ -19,7 +19,7 @@ import MyTicToc as mt
 
 # In[1:] Define model domain and soil properties
 # Define model Domain
-nIN = 151
+nIN = 351
 # soil profile
 zIN = np.linspace(-5, 0, num=nIN).reshape(nIN, 1)
 # nIN = np.shape(zIN)[0]
@@ -54,12 +54,12 @@ n = 1 - rhoB / rhoS  # [-] porosity of soil = saturated water content.
 
 
 # collect soil parameters in a pandas Series: sPar
-sPar = {'vGA': np.ones(np.shape(zN)) * 1 / 0.5,  # alpha[1/m]
+sPar = {'vGA': np.ones(np.shape(zN)) * 0.019*100,  # alpha[1/m]
         'vGN': np.ones(np.shape(zN)) * 3.0,  # n[-]
         'vGM': np.ones(np.shape(zN)) * (1 - 1 / 3.0),  # m = 1-1/n[-]
-        'thS': np.ones(np.shape(zN)) * 0.4,  # saturated water content
-        'thR': np.ones(np.shape(zN)) * 0.03,  # residual water content
-        'KSat': np.ones(np.shape(zN)) * 0.05,  # [m/day]
+        'thS': np.ones(np.shape(zN)) * 0.41,  # saturated water content = phi,porosity
+        'thR': np.ones(np.shape(zN)) * 0.095,  # residual water content
+        'KSat': np.ones(np.shape(zN)) * 1, # 6.2,  # [m/day]
         'vGE': 0.5,  # power factor for Mualem-van Genuchten                      
         'Cv': 1.0e-8,  # compressibility of compact sand [1/Pa]
         'h1': np.ones(np.shape(zN))*0,
@@ -112,19 +112,19 @@ bPar = {'topBndFuncWat': BndqWatTop, #topBndFuncWat(t,bPar)
         'qTop': -0.01,  # top flux
         'tWMin': 50,
         'tWMax': 375,
-        'bottomTypeWat': 'Gravity', # Robin condition or Gravity condition
+        'bottomTypeWat': 'Robin', # Robin condition or Gravity condition
         'kRobBotWat': 0.10,  # Robin resistance term for bottom
         'hwBotBnd': -1.0,  # pressure head at lower boundary
         }
 bPar = pd.Series(bPar)
 
 # In[3:] Define Initial Conditions
-zRef = -0.5 # depth of water table
+zRef = -4 # depth of water table
 hwIni = zRef - zN
 
 # In[4:] Solv problem
 # Time Discretization
-tOut2 = np.linspace(t_range[0],t_range[100],1*365)  # time
+tOut2 = np.linspace(t_range[0],t_range[100],2*365)  # time
 #tOut2 = np.linspace(0, 10*365, num=365*5)
 
 print('Solving unsaturated water flow problem')
@@ -170,20 +170,20 @@ ax3.grid(b=True)
 ax3.set_xlabel('water content [-]')
 ax3.set_ylabel('depth [m]')
 
-SODE = np.zeros(np.shape(hwODE.y))
-for ii in np.arange(0, hwODE.t.size, 1):
-    hwTmp = hwODE.y[:, ii].reshape(zN.shape)
-    SODE[:, ii] = rfun.s_root(hwODE.t,hwTmp, sPar,mDim,bPar).reshape(1, nN)
+# SODE = np.zeros(np.shape(hwODE.y))
+# for ii in np.arange(0, hwODE.t.size, 1):
+#     hwTmp = hwODE.y[:, ii].reshape(zN.shape)
+#     SODE[:,ii] = rfun.s_root(tOut2,hwTmp, sPar,mDim,bPar)
     
-fig4, ax4 = plt.subplots(figsize=(7, 7))
-for ii in np.arange(0, hwODE.t.size, 1):
-    ax3.plot(SODE[:,ii], zN[:, 0], '-')
+# fig4, ax4 = plt.subplots(figsize=(7, 7))
+# for ii in np.arange(0, hwODE.t.size, 1):
+#     ax3.plot(SODE[ii,:], zN[ii,0], '-')
 
-ax3.grid(b=True)
-ax3.set_xlabel('Root Sink [m/s]')
-ax3.set_ylabel('depth [m]')
+# ax4.grid(b=True)
+# ax4.set_xlabel('Root Sink [m/s]')
+# ax4.set_ylabel('depth [m]')
 
-plt.show()
+# plt.show()
 
 # if __name__ == "__main__":
 #    main()

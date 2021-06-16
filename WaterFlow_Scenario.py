@@ -16,7 +16,7 @@ import WaterFlow as WF
 # Domain
 nIN = 151   # Number of internodes.
 # soil profile of one meter (note: original soil profile was 15 m for the heat flow problem)
-zIN = np.linspace(-1, 0, num=nIN).reshape(nIN, 1)   # defining internodes
+zIN = np.linspace(-5, 0, num=nIN).reshape(nIN, 1)   # defining internodes
 # nIN = np.shape(zIN)[0]
 zN = np.zeros(nIN - 1).reshape(nIN - 1, 1)
 zN[0, 0] = zIN[0, 0]                                # Shape = number of nodes, empty arrays
@@ -49,19 +49,19 @@ taxis = meteo_data.index[:-1]
 def BndQTop(t, bPar): 
     #bndTop = bPar.Topflow + 0.1 * bPar.Topflow * np.cos(t*0.1)     # Varying inflow between 0.1 +/- Topflow m^3/s ? (not sure about units)
     #bndTop = bPar.Topflow * (t > bPar.tWMin) * (t < bPar.tWMax) * (0.1 * np.abs( np.cos(t*.1)))
-    bndTop = bPar.Topflow 
+    #bndTop = bPar.Topflow 
    
-    # if np.size(t)==1:
-    #     t = np.array([t])
-    # bndTop = np.zeros((len(t)))
+    if np.size(t)==1:
+        t = np.array([t])
+    bndTop = np.zeros((len(t)))
     
-    # for ii in range(len(t)):
-    #     xy, md_ind, t_ind = np.intersect1d(bPar.meteo_data['num_date'], np.ceil(t[ii]), return_indices=True)
-    #     rf = bPar.meteo_data['rain_station'].iloc[md_ind].values
-    #     bndTop[ii] = -rf
+    for ii in range(len(t)):
+        xy, md_ind, t_ind = np.intersect1d(bPar.meteo_data['num_date'], np.ceil(t[ii]), return_indices=True)
+        rf = bPar.meteo_data['rain_station'].iloc[md_ind].values
+        bndTop[ii] = -rf
     return bndTop
 
-def pEV(t, bPar,sPar):   # Potential Evaporation for use in Root Sink Equation
+def pEV(t, bPar):   # Potential Evaporation for use in Root Sink Equation
     if np.size(t)==1:
         t = np.array([t])
     potEv = np.zeros((len(t)))
@@ -80,7 +80,7 @@ bPar = {'Topflow': -0.01,    # Top, placeholder value    #no flow = 0, otherwise
         'meteo_data': meteo_data,
         'bottomTypeWat': 'Gravity',    #Robin condition or Gravity condition
         'kRobBotWat': 0.1, # [1/d] Robin resistance term for bottom
-        'hwBotBnd': -1.0,  # pressure head at lower boundary
+        'hwBotBnd': -4.0,  # pressure head at lower boundary
         'tWMin': 50,  # For testing, decide ourselves what we want this to be ToDo
         'tWMax': 375,
         'TopBd': BndQTop,
@@ -90,12 +90,12 @@ bPar = pd.Series(bPar)
 
 # Soil parameters - fixed. Sandy clay loam properties from Chap 2 M&H
 sPar = {'n': np.ones(np.shape(zN))*3 ,# *np.ones(np.shape(zN)),              # Do we need the np.ones(np.shape(zN)) term? Doesn't seem like it does much
-        'm': np.ones(np.shape(zN))*2/3 ,# *np.ones(np.shape(zN)),
-        'alpha': np.ones(np.shape(zN))*2 ,# *np.ones(np.shape(zN)),     # recommended change by Timo (before 0.059 which he said was way too low)
-        'theta_res': np.ones(np.shape(zN))*0.03 ,# *np.ones(np.shape(zN)),   # theta_wir, M&H Chapter 2
-        'theta_sat':np.ones(np.shape(zN))*0.4 ,# *np.ones(np.shape(zN)), # phi, M&H Chapter 2
-        'phi': 0.39 ,# *np.ones(np.shape(zN)), # porosity (same as theta_saturated)
-        'Ksat': np.ones(np.shape(zN))*0.05 ,# *np.ones(np.shape(zN)), # m/d - Timo says this value is high (31.4), adjusted. Next assignment: Ksat = ksat*rhow*g/viscosity ,and viscosity will be function of T
+        'm': np.ones(np.shape(zN))*(1-1/3) ,# *np.ones(np.shape(zN)),
+        'alpha': np.ones(np.shape(zN))*1.9 ,# *np.ones(np.shape(zN)),     # recommended change by Timo (before 0.059 which he said was way too low)
+        'theta_res': np.ones(np.shape(zN))*0.095 ,# *np.ones(np.shape(zN)),   # theta_wir, M&H Chapter 2
+        'theta_sat':np.ones(np.shape(zN))*0.41 ,# *np.ones(np.shape(zN)), # phi, M&H Chapter 2
+        'phi': 0.41 ,# *np.ones(np.shape(zN)), # porosity (same as theta_saturated)
+        'Ksat': np.ones(np.shape(zN))*6.2 ,# *np.ones(np.shape(zN)), # m/d - Timo says this value is high (31.4), adjusted. Next assignment: Ksat = ksat*rhow*g/viscosity ,and viscosity will be function of T
         #'S_Sw': 4e-10*rhow*g,# *np.ones(np.shape(zN)), # compressibility of water
         'beta_wat': 4.5e-10,
         'Cv': 1.0e-8,  # compressibility of compact sand [1/Pa],
@@ -110,7 +110,7 @@ sPar = pd.Series(sPar)
 #%%  
 
 # Define Initial Conditions
-zRef = -0.5 # depth of water table
+zRef = -4 # depth of water table
 hwIni = zRef - zN
 
 
@@ -167,71 +167,7 @@ ax3.set_xlabel('water content [-]')
 ax3.set_ylabel('depth [m]')
 ax3.set_title('Water content vs depth, time dependend top flux and Robin boundary condition')
 
-fig4, ax4 = plt.subplots(figsize=(7, 7))
-for ii in np.arange(0, hwODE.t.size, 1):
-    ax4.plot(pEV(ii,bPar), '-')
 
-ax4.grid(b=True)
-ax4.set_xlabel('water content [-]')
-ax4.set_ylabel('depth [m]')
-ax4.set_title('W')
-
-# Possibly plotting the water flux
-# fig4, ax4 = plt.subplots(figsize=(7, 4))
-# qODE = np.zeros(np.shape(hwODE.y))
-# for ii in np.arange(0, hwODE.t.size, 1):
-#     qODE[:,ii] = WF.WaterFlux(t_out[ii],hwTmp,sPar,mDim,bPar)
-# # plot fluxes after 2nd output time (initial rate is extreme due to initial conditions)
-# ax4.plot(t_out, qODE[ii,:], '-')
-# ax4.set_title('Water Flux ')
-# ax4.set_ylabel('depth [m]')
-# ax4.set_xlabel('water flow [m/d]')
-# ax4.legend(zN[ii])
-# TRYING AGAIN!!
-# qODE = np.zeros([51, 51])
-# for ii in np.arange(0, hwODE.t.size, 1):
-#     hwTmp = hwODE.y[:, ii].reshape(zN.shape)
-#     qODE[:, ii] = WF.WaterFlux(t_out[ii], hwTmp, sPar, mDim, bPar).reshape(365, nIN) #def WaterFlux(t, hw, sPar, mDim, bPar)
-
-
-# fig4, ax4 = plt.subplots(figsize=(7, 7))
-# for ii in np.arange(0, hwODE.t.size, 1):
-#     ax4.plot(qODE[:, ii], zIN[:, 0], '-')
-
-# ax4.grid(b=True)
-# ax4.set_xlabel('Water Flux [m/d]')
-# ax4.set_ylabel('depth [m]')
-# ax4.set_title('Water Flux with Flow and Robin boundary')
-
-# fig5, ax5 = plt.subplots(figsize=(7, 7))
-# for ii in np.arange(0, hwODE.t.size, 1):
-#     ax4.plot(BndQTop[:, ii], zIN[:, 0], '-')
-
-# ax5.grid(b=True)
-# ax5.set_xlabel('Water Flux [m/d]')
-# ax5.set_ylabel('depth [m]')
-# ax5.set_title('Rainfall')
-
-# fig6, ax6 = plt.subplots(figsize=(7, 7))
-# for ii in np.arange(0, hwODE.t.size, 1):
-#     ax4.plot(pEV[ii], zIN[:, 0], '-')
-
-# ax6.grid(b=True)
-# ax6.set_xlabel('Evap Water Flux [m/d]')
-# ax6.set_ylabel('depth [m]')
-# ax6.set_title('Rainfall')
-# plt.show()
-
-
-# # %% Testing Flux Sections
-# fig5, ax5 = plt.subplots(figsize=(7, 7))
-# for ii in np.arange(0, hwODE.t.size, 1):
-#     ax5.plot(qODE[:, ii], zIN[:, 0], '-')
-
-# ax5.grid(b=True)
-# ax5.set_xlabel('Water Flux [m/d]')
-# ax5.set_ylabel('depth [m]')
-# ax5.set_title('Water Flux')
 
 
 

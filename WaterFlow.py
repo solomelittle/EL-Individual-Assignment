@@ -66,28 +66,16 @@ def K(hw, sPar, mDim):  # Kskr used in waterflux equation
     
     return k_IN
 # %% Roots
-def alpharoot(hw, mDim, sPar):
-    h1 = sPar.h1
-    h2 = sPar.h2
-    h3 = sPar.h3
-    h4 = sPar.h4
-    
-    a = (hw-h4)/(h3-h4)*(hw>=h4)*(hw<h3)+(hw>h3)(hw<h2)+hw/h2*(hw<h1)*(hw>h2)
-    # NEED TO VECTORIZE!! cant use array in judgemental 
-    
-    
-        # ii = np.arange(1,nIN-2) # bottom boundary defined in water flux
-    # if ii<-15:
-    #     alpha[ii] = 0
-    # if ii in range(-15,-8.5):
-    #     alpha[ii] = 0.1538*ii+2.307
-    # if ii in range(-1,-8.5):
-    #     alpha[ii] = 1
-    # if ii in range(0,-1):
-    #     alpha[ii] = -ii
+def alpharoot(hw, sP):
+    h1 = sP.h1
+    h2 = sP.h2
+    h3 = sP.h3
+    h4 = sP.h4
+    a=h1*(hw<=h4)+h1*(hw>=h1)+(hw-h4)/(h3-h4)*(hw>h4)*(hw<h3)+(hw>h3)*(hw<h2)+(hw-h1)/(h2-h1)*(hw<h1)*(hw>h2)
+  
     return a
-    
-def betarootlength((t,hw,mDim,sPar)):
+
+def betaroot(t,hw,mDim,sP):
     zN = mDim.zN
     dzN = mDim.dzN
     nN = mDim.nN
@@ -98,18 +86,24 @@ def betarootlength((t,hw,mDim,sPar)):
     b = np.ones(np.shape(zN),dtype=hw.dtype)
     Lrv = zetaL*np.exp(rhoL*zN)*dz
     
-    ii = np.arange(0, nIN)
-    beta[ii] = Lrv[ii]/np.sum(Lrv)
+    ii = np.arange(0, nN)
+    b[ii] = Lrv[ii]/np.sum(Lrv)
     
-    return beta
+    return b
 
-    #From Assignment outline
-# def beta_root(t,hw,mDim,sPar):
-#     nr,nc = hw.shape
+def s_root (t,hw,sP,mDim, bPar):
+    pEv = bPar.potEv(t, bPar)
 #     nIN = mDim.nIN
-#     b = 0.1*np.ones([nIN,nc],dtype=hw.dtype)
-#     return b
-    
+#     nr,nc = hw.shape
+
+    alpha = alpharoot(hw, sP)
+    beta = betaroot(t,hw,mDim,sP)
+    S=alpha*beta*pEv
+#     S = np.zeros([nN,nc],dtype=hw.dtype)
+#     S=alpha*beta*potEv
+  
+    return S
+
 # %% Flux & Divergence Functions
 
 def WaterFlux(t, hw, sPar, mDim, bPar):   # dYdt in the solver. Water flux defined at internodes
@@ -139,31 +133,20 @@ def DivWaterFlux(t, hw, sPar, mDim, bPar): # Divergent water flux defined at nod
     
    # Calculate water fluxes accross all internodes
     qw = WaterFlux(t, hw, sPar, mDim, bPar)
+    S = s_root(t,hw,sPar, mDim, bPar)
+    mass = diffWaterCapP(hw, sPar, mDim)
+    
     divqw = np.zeros([nN, nc],dtype=hw.dtype)
+    rateWF = np.zeros([nN,nc]).astype(hw.dtype)
     # Calculate divergence of flux for all nodes
     ii = np.arange(0, nN)
     divqw[ii] = -(qw[ii + 1] - qw[ii]) \
                    / (dzIN[ii])
+    rateWF[ii]=(divqw[ii]-S[ii])/mass[ii]
+    
     
     return divqw
 
-def S_Root_DivWaterFlux (t,hw,sPar,mDim, bPar):
-    nIN = mDim.nIN
-    nr,nc = hw.shape
-    Cstarwi = diffWaterCapP(hw, sPar, mDim)
-    divqw=DivWaterFlux(t, hw, sPar, mDim, bPar)
-    
-    alpha = alpharoot(hw,mDim, sPar)
-    beta = betarootlength(hw,mDim)
-    potEv = bPar.potEv(t, bPar)
-    
-    S = np.zeros([nIN,nc],dtype=hw.dtype)
-    alpha= np.ones([nIN,nc], dtype=hw.dtype)
-        
-    S=alpha*beta*potEv
-    
-    rateWF=(divqw-S)/* Cstarwi
-    return rateWF
 
 # %% Solver (Integration Function)
 
@@ -172,7 +155,7 @@ def IntegrateWF(tRange, hwIni, sPar, mDim, bPar): # need tRange and iniSt
     def dYdt(t, hw):
         if len(hw.shape)==1:
             hw = hw.reshape(mDim.nN,1)
-        rates = S_Root_DivWaterFlux(t, hw, sPar, mDim, bPar)
+        rates = DivWaterFlux(t, hw, sPar, mDim, bPar)
         return rates
 
     def jacFun(t,y):
@@ -190,7 +173,7 @@ def IntegrateWF(tRange, hwIni, sPar, mDim, bPar): # need tRange and iniSt
     int_result = spi.solve_ivp(dYdt, t_span, hwIni.squeeze(), 
                                 t_eval=tRange, 
                                 method='BDF', vectorized=True, jac=jacFun, 
-                                rtol=1e-6)
+                                rtol=1e-7)
     return int_result
 
 
