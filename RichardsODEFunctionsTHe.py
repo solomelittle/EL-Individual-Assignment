@@ -196,7 +196,7 @@ def IntegrateWF(tRange, iniSt, sPar, mDim, bPar):
     int_result = spi.solve_ivp(dYdt, t_span, iniSt.squeeze(),
                                method='BDF', vectorized=True, jac=jacFun, 
                                t_eval=tRange,
-                               rtol=1e-7)
+                               rtol=1e-8)
 
     return int_result
 

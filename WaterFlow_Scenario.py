@@ -14,7 +14,7 @@ import WaterFlow as WF
 
 # Definition of the notes and internodes:
 # Domain
-nIN = 151   # Number of internodes.
+nIN = 351   # Number of internodes.
 # soil profile of one meter (note: original soil profile was 15 m for the heat flow problem)
 zIN = np.linspace(-5, 0, num=nIN).reshape(nIN, 1)   # defining internodes
 # nIN = np.shape(zIN)[0]
@@ -78,9 +78,9 @@ g = 9.81        # [m/s/s] gravitational constant
 # Definition of the Boundary Parameters: collect boundary parameters in a named tuple boundpar. Has to have something to do with flow rate
 bPar = {'Topflow': -0.01,    # Top, placeholder value    #no flow = 0, otherwise e.g. -0.1
         'meteo_data': meteo_data,
-        'bottomTypeWat': 'Gravity',    #Robin condition or Gravity condition
+        'bottomTypeWat': 'Robin',    #Robin condition or Gravity condition
         'kRobBotWat': 0.1, # [1/d] Robin resistance term for bottom
-        'hwBotBnd': -4.0,  # pressure head at lower boundary
+        'hwBotBnd': -1.0,  # pressure head at lower boundary
         'tWMin': 50,  # For testing, decide ourselves what we want this to be ToDo
         'tWMax': 375,
         'TopBd': BndQTop,
@@ -95,7 +95,7 @@ sPar = {'n': np.ones(np.shape(zN))*3 ,# *np.ones(np.shape(zN)),              # D
         'theta_res': np.ones(np.shape(zN))*0.095 ,# *np.ones(np.shape(zN)),   # theta_wir, M&H Chapter 2
         'theta_sat':np.ones(np.shape(zN))*0.41 ,# *np.ones(np.shape(zN)), # phi, M&H Chapter 2
         'phi': 0.41 ,# *np.ones(np.shape(zN)), # porosity (same as theta_saturated)
-        'Ksat': np.ones(np.shape(zN))*6.2 ,# *np.ones(np.shape(zN)), # m/d - Timo says this value is high (31.4), adjusted. Next assignment: Ksat = ksat*rhow*g/viscosity ,and viscosity will be function of T
+        'Ksat': np.ones(np.shape(zN))*1,#6.2 ,# *np.ones(np.shape(zN)), # m/d - Timo says this value is high (31.4), adjusted. Next assignment: Ksat = ksat*rhow*g/viscosity ,and viscosity will be function of T
         #'S_Sw': 4e-10*rhow*g,# *np.ones(np.shape(zN)), # compressibility of water
         'beta_wat': 4.5e-10,
         'Cv': 1.0e-8,  # compressibility of compact sand [1/Pa],
@@ -140,6 +140,7 @@ ax1.grid(b=True)
 ax1.set_ylabel('pressure head [m]')
 ax1.set_xlabel('time [d]') 
 ax1.set_title('Water pressure head vs time, time dependend top flux and Robin boundary condition')
+ax1.legend()
 
 
 #plot pressure head as a function of depth. Here we plot every time step

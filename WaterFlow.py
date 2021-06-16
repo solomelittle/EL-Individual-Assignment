@@ -173,7 +173,7 @@ def IntegrateWF(tRange, hwIni, sPar, mDim, bPar): # need tRange and iniSt
     int_result = spi.solve_ivp(dYdt, t_span, hwIni.squeeze(), 
                                 t_eval=tRange, 
                                 method='BDF', vectorized=True, jac=jacFun, 
-                                rtol=1e-7)
+                                rtol=1e-8)
     return int_result
 
 
