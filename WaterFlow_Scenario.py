@@ -14,7 +14,7 @@ import WaterFlow as WF
 
 # Definition of the notes and internodes:
 # Domain
-nIN = 101   # Number of internodes.
+nIN = 151   # Number of internodes.
 # soil profile of one meter (note: original soil profile was 15 m for the heat flow problem)
 zIN = np.linspace(-1, 0, num=nIN).reshape(nIN, 1)   # defining internodes
 # nIN = np.shape(zIN)[0]

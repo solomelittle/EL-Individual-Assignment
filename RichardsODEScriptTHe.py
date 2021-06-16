@@ -21,7 +21,7 @@ import MyTicToc as mt
 # Define model Domain
 nIN = 151
 # soil profile
-zIN = np.linspace(-1.5, 0, num=nIN).reshape(nIN, 1)
+zIN = np.linspace(-5, 0, num=nIN).reshape(nIN, 1)
 # nIN = np.shape(zIN)[0]
 zN = np.zeros(nIN - 1).reshape(nIN - 1, 1)
 zN[0, 0] = zIN[0, 0]
@@ -62,6 +62,10 @@ sPar = {'vGA': np.ones(np.shape(zN)) * 1 / 0.5,  # alpha[1/m]
         'KSat': np.ones(np.shape(zN)) * 0.05,  # [m/day]
         'vGE': 0.5,  # power factor for Mualem-van Genuchten                      
         'Cv': 1.0e-8,  # compressibility of compact sand [1/Pa]
+        'h1': np.ones(np.shape(zN))*0,
+        'h2': np.ones(np.shape(zN))*-1,
+        'h3': np.ones(np.shape(zN))*-8.5,
+        'h4': np.ones(np.shape(zN))*-15,
         }
 sPar = pd.Series(sPar)
 
@@ -89,8 +93,21 @@ def BndqWatTop(t, bPar):
         qBnd[ii] = -rf
     return qBnd
 
+def pEV(t, bPar):
+    if np.size(t)==1:
+        t = np.array([t])
+    potEv = np.zeros(len(t))
+
+    for ii in range(len(t)):
+        xy, md_ind, t_ind = np.intersect1d(bPar.meteo_data['num_date'], np.ceil(t[ii]), return_indices=True)
+        evap = bPar.meteo_data['pEV'].iloc[md_ind].values
+        potEv[ii] = evap
+    return potEv
+
+
 # Define top boundary condition function
 bPar = {'topBndFuncWat': BndqWatTop, #topBndFuncWat(t,bPar)
+        'potEv': pEV,
         'meteo_data': meteo_data,
         'qTop': -0.01,  # top flux
         'tWMin': 50,
@@ -107,7 +124,7 @@ hwIni = zRef - zN
 
 # In[4:] Solv problem
 # Time Discretization
-tOut2 = np.linspace(t_range[0],t_range[365],5*365)  # time
+tOut2 = np.linspace(t_range[0],t_range[100],1*365)  # time
 #tOut2 = np.linspace(0, 10*365, num=365*5)
 
 print('Solving unsaturated water flow problem')
@@ -151,6 +168,19 @@ for ii in np.arange(0, hwODE.t.size, 1):
 
 ax3.grid(b=True)
 ax3.set_xlabel('water content [-]')
+ax3.set_ylabel('depth [m]')
+
+SODE = np.zeros(np.shape(hwODE.y))
+for ii in np.arange(0, hwODE.t.size, 1):
+    hwTmp = hwODE.y[:, ii].reshape(zN.shape)
+    SODE[:, ii] = rfun.s_root(hwODE.t,hwTmp, sPar,mDim,bPar).reshape(1, nN)
+    
+fig4, ax4 = plt.subplots(figsize=(7, 7))
+for ii in np.arange(0, hwODE.t.size, 1):
+    ax3.plot(SODE[:,ii], zN[:, 0], '-')
+
+ax3.grid(b=True)
+ax3.set_xlabel('Root Sink [m/s]')
 ax3.set_ylabel('depth [m]')
 
 plt.show()

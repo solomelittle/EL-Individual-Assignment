@@ -152,9 +152,11 @@ def S_Root_DivWaterFlux (t,hw,sPar,mDim, bPar):
     nr,nc = hw.shape
     Cstarwi = diffWaterCapP(hw, sPar, mDim)
     divqw=DivWaterFlux(t, hw, sPar, mDim, bPar)
+    
     alpha = alpharoot(hw,mDim, sPar)
     beta = betarootlength(hw,mDim)
     potEv = bPar.potEv(t, bPar)
+    
     S = np.zeros([nIN,nc],dtype=hw.dtype)
     alpha= np.ones([nIN,nc], dtype=hw.dtype)
         

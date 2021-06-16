@@ -86,6 +86,43 @@ def KFun(hw, sP, mDim):
     kIN[nIN - 1] = kN[nIN - 2]
     return kIN
 
+def alpharoot(hw, sP):
+    h1 = sP.h1
+    h2 = sP.h2
+    h3 = sP.h3
+    h4 = sP.h4
+    a=(hw-h4)/(h3-h4)*(hw>=h4)*(hw<h3)+(hw>h3)*(hw<h2)+hw/h2*(hw<h1)*(hw>h2)
+  
+    return a
+
+def betaroot(t,hw,mDim,sP):
+    zN = mDim.zN
+    dzN = mDim.dzN
+    nN = mDim.nN
+    dz = dzN[0]
+    zetaL= 7500 # m/m3 empirical
+    rhoL = 20.15 # empirical
+    
+    b = np.ones(np.shape(zN),dtype=hw.dtype)
+    Lrv = zetaL*np.exp(rhoL*zN)*dz
+    
+    ii = np.arange(0, nN)
+    b[ii] = Lrv[ii]/np.sum(Lrv)
+    
+    return b
+
+def s_root (t,hw,sP,mDim, bPar):
+    pEv = bPar.potEv(t, bPar)
+#     nIN = mDim.nIN
+#     nr,nc = hw.shape
+
+    alpha = alpharoot(hw, sP)
+    beta = betaroot(t,hw,mDim,sP)
+    S=alpha*beta*pEv
+#     S = np.zeros([nN,nc],dtype=hw.dtype)
+#     S=alpha*beta*potEv
+  
+    return S
 
 def WatFlux(t, hw, sP, mDim, bPar):
     #Waterflow (m3/m2d)
@@ -121,18 +158,20 @@ def DivWatFlux(t, hw, sP, mDim, bPar):
 
     #lochw = hw.copy().reshape(mDim.zN.shape)
     divqW = np.zeros([nN,nc]).astype(hw.dtype)
+    rateWF = np.zeros([nN,nc]).astype(hw.dtype)
     # Calculate heat fluxes accross all internodes
+    S = s_root(t,hw,sP, mDim, bPar)
     massMD = CPrimeFun(hw, sP, mDim)
 
     qW = WatFlux(t, hw, sP, mDim, bPar)
     # Calculate divergence of flux for all nodes
     ii = np.arange(0,nN)
-    divqW[ii] = -(qW[ii + 1] - qW[ii]) / (dzIN[ii] * massMD[ii])
-
+    divqW[ii] = -(qW[ii + 1] - qW[ii]) / (dzIN[ii])
+    rateWF= (divqW[ii]-S[ii])/ massMD[ii]
     #Kmat = FillKMatWat(t, lochw, sP, mDim, bPar)
     #Yvec = FillYVecWat(t, lochw, sP, mDim, bPar)
     #divqW = (np.dot(Kmat,lochw) + Yvec)/massMD
-    return divqW
+    return rateWF
 
 
 def IntegrateWF(tRange, iniSt, sPar, mDim, bPar):
@@ -164,16 +203,11 @@ def IntegrateWF(tRange, iniSt, sPar, mDim, bPar):
         #return sp.coo_matrix(jac)
         return jac
     
-    def jacFunMat(t,y):
-        if len(y.shape)==1:
-            y = y.reshape(mDim.nN,1)
-        jac = JacRichardsTHe(t, y, sPar, mDim, bPar)
-        return jac    
 
     # solve rate equatio
     t_span = [tRange[0],tRange[-1]]
     int_result = spi.solve_ivp(dYdt, t_span, iniSt.squeeze(),
-                               method='BDF', vectorized=True,# jac=jacFun, 
+                               method='BDF', vectorized=True, jac=jacFun, 
                                t_eval=tRange,
                                rtol=1e-6)
 
