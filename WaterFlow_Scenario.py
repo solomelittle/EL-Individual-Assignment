@@ -84,6 +84,7 @@ bPar = {'Topflow': -0.01,    # Top, placeholder value    #no flow = 0, otherwise
         'tWMin': 50,  # For testing, decide ourselves what we want this to be ToDo
         'tWMax': 375,
         'TopBd': BndQTop,
+        'potEv': pEV,
         }
 bPar = pd.Series(bPar)
 
@@ -98,7 +99,10 @@ sPar = {'n': np.ones(np.shape(zN))*3 ,# *np.ones(np.shape(zN)),              # D
         #'S_Sw': 4e-10*rhow*g,# *np.ones(np.shape(zN)), # compressibility of water
         'beta_wat': 4.5e-10,
         'Cv': 1.0e-8,  # compressibility of compact sand [1/Pa],
-        'potEv': pEV
+        'h1': np.ones(np.shape(zN))*0,
+        'h2': np.ones(np.shape(zN))*(-1),
+        'h3': np.ones(np.shape(zN))*(-8.5),
+        'h4': np.ones(np.shape(zN))*(-15),
         }
 sPar = pd.Series(sPar)
 

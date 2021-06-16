@@ -66,24 +66,49 @@ def K(hw, sPar, mDim):  # Kskr used in waterflux equation
     
     return k_IN
 # %% Roots
-def rootlength(hw, mDim):
-    nr,nc = hw.shape
-    zIN = mDim.zIN
-    nIN = mDim.nIN
+def alpharoot(hw, mDim, sPar):
+    h1 = sPar.h1
+    h2 = sPar.h2
+    h3 = sPar.h3
+    h4 = sPar.h4
+    
+    a = (hw-h4)/(h3-h4)*(hw>=h4)*(hw<h3)+(hw>h3)(hw<h2)+hw/h2*(hw<h1)*(hw>h2)
+    # NEED TO VECTORIZE!! cant use array in judgemental 
+    
+    
+        # ii = np.arange(1,nIN-2) # bottom boundary defined in water flux
+    # if ii<-15:
+    #     alpha[ii] = 0
+    # if ii in range(-15,-8.5):
+    #     alpha[ii] = 0.1538*ii+2.307
+    # if ii in range(-1,-8.5):
+    #     alpha[ii] = 1
+    # if ii in range(0,-1):
+    #     alpha[ii] = -ii
+    return a
+    
+def betarootlength((t,hw,mDim,sPar)):
+    zN = mDim.zN
+    dzN = mDim.dzN
+    nN = mDim.nN
+    dz = dzN[0]
     zetaL= 7500 # m/m3 empirical
     rhoL = 20.15 # empirical
-    Lrv = np.zeros([nIN],dtype=hw.dtype)
+    
+    b = np.ones(np.shape(zN),dtype=hw.dtype)
+    Lrv = zetaL*np.exp(rhoL*zN)*dz
+    
     ii = np.arange(0, nIN)
-    Lrv[ii] = zetaL*np.exp(rhoL*zIN)/(ii*zIN)
-    return Lrv
+    beta[ii] = Lrv[ii]/np.sum(Lrv)
+    
+    return beta
 
     #From Assignment outline
-def beta_root(hw,mDim):
-    nr,nc = hw.shape
-    nIN = mDim.nIN
-    b = 0.1*np.ones([nIN,nc],dtype=hw.dtype)
-    return b
-
+# def beta_root(t,hw,mDim,sPar):
+#     nr,nc = hw.shape
+#     nIN = mDim.nIN
+#     b = 0.1*np.ones([nIN,nc],dtype=hw.dtype)
+#     return b
     
 # %% Flux & Divergence Functions
 
@@ -114,36 +139,28 @@ def DivWaterFlux(t, hw, sPar, mDim, bPar): # Divergent water flux defined at nod
     
    # Calculate water fluxes accross all internodes
     qw = WaterFlux(t, hw, sPar, mDim, bPar)
-    Cstarwi = diffWaterCapP(hw, sPar, mDim)
     divqw = np.zeros([nN, nc],dtype=hw.dtype)
     # Calculate divergence of flux for all nodes
     ii = np.arange(0, nN)
     divqw[ii] = -(qw[ii + 1] - qw[ii]) \
-                   / (dzIN[ii] * Cstarwi[ii])
+                   / (dzIN[ii])
     
     return divqw
 
 def S_Root_DivWaterFlux (t,hw,sPar,mDim, bPar):
     nIN = mDim.nIN
     nr,nc = hw.shape
+    Cstarwi = diffWaterCapP(hw, sPar, mDim)
     divqw=DivWaterFlux(t, hw, sPar, mDim, bPar)
-    beta = beta_root(hw,mDim)
-    potEv = sPar.potEv(t, bPar, sPar)
+    alpha = alpharoot(hw,mDim, sPar)
+    beta = betarootlength(hw,mDim)
+    potEv = bPar.potEv(t, bPar)
     S = np.zeros([nIN,nc],dtype=hw.dtype)
     alpha= np.ones([nIN,nc], dtype=hw.dtype)
-    ii = np.arange(1,nIN-2) # bottom boundary defined in water flux
-    if ii<-15:
-        alpha[ii] = 0
-    if ii in range(-15,-8.5):
-        alpha[ii] = 0.1538*ii+2.307
-    if ii in range(-1,-8.5):
-        alpha[ii] = 1
-    if ii in range(0,-1):
-        alpha[ii] = -ii
         
-    S[ii] = alpha[ii]*beta[ii]*sPar.potEv(t,sPar,bPar)
+    S=alpha*beta*potEv
     
-    rateWF=divqw-S
+    rateWF=(divqw-S)/* Cstarwi
     return rateWF
 
 # %% Solver (Integration Function)
