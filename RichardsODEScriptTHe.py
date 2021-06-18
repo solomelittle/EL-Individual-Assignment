@@ -119,12 +119,13 @@ bPar = {'topBndFuncWat': BndqWatTop, #topBndFuncWat(t,bPar)
 bPar = pd.Series(bPar)
 
 # In[3:] Define Initial Conditions
-zRef = -4 # depth of water table
+zRef = -2 # depth of water table
 hwIni = zRef - zN
 
 # In[4:] Solv problem
 # Time Discretization
-tOut2 = np.linspace(t_range[0],t_range[365],5*365)  # time
+tOut2 = np.linspace(t_range[0],t_range[10],365)  # time
+tOut = tOut2
 #tOut2 = np.linspace(0, 10*365, num=365*5)
 
 print('Solving unsaturated water flow problem')
@@ -134,15 +135,15 @@ mt.toc()
 
 tOut2 = hwODE.t
 #theta_sim = rfun.thFun(hwODE,sPar)
-qw_sim = rfun.WatFlux(tOut2,hwODE.y,sPar,mDim,bPar)
-S_sim = rfun.s_root(tOut2,hwODE.y, sPar, mDim, bPar)
+qw_sim = rfun.WatFlux(tOut,hwODE.y,sPar,mDim,bPar)
+S_sim = rfun.s_root(tOut,hwODE.y, sPar, mDim, bPar)
 
 # In[5:] Plot results...
 plt.close('all')
 fig1, ax1 = plt.subplots(figsize=(7, 4))
 # plot the pressure head for different depths as a function of time
 # in this case we plot every 20th layer.
-for ii in np.arange(0, nN, 20):
+for ii in np.arange(0, nN, 10):
     ax1.plot(hwODE.t, hwODE.y[ii, :], '-')
 
 ax1.grid(b=True)
@@ -151,7 +152,7 @@ ax1.set_xlabel('time [d]')
 
 #plot pressure head as a function of depth. Here we plot every time step
 fig2, ax2 = plt.subplots(figsize=(7, 7))
-for ii in np.arange(0, hwODE.t.size, 1):
+for ii in np.arange(0, hwODE.t.size, 10):
     ax2.plot(hwODE.y[:, ii], zN[:, 0], '-')
 
 ax2.grid(b=True)
@@ -161,7 +162,7 @@ ax2.set_ylabel('depth [m]')
 # plt.savefig('myfig.png')
 # calculate water contents (using function) and plot results as a function of depth
 thODE = np.zeros(np.shape(hwODE.y))
-for ii in np.arange(0, hwODE.t.size, 1):
+for ii in np.arange(0, hwODE.t.size, 10):
     hwTmp = hwODE.y[:, ii].reshape(zN.shape)
     thODE[:, ii] = rfun.thFun(hwTmp, sPar).reshape(1, nN)
 
@@ -176,18 +177,16 @@ ax3.set_ylabel('depth [m]')
 fig4, ax4 = plt.subplots(figsize=(7, 4))
 
 # plot the flux as a function of time for diff depths
-ax4.plot(tOut2, qw_sim[ii].qw, '-')
-ax4.set_ylabel('water flux [-]')
-ax4.set_xlabel('time [d]')
-ax4.legend(zN[ii])
+ax4.plot(qw_sim, '-')
+ax4.set_ylabel('water flux [m/s]')
+ax4.set_xlabel('depth [-]')
 
 fig5, ax5 = plt.subplots(figsize=(7, 4))
 
 # plot the flux as a function of time for diff depths
-ax5.plot(tOut2, S_sim[ii].S, '-')
-ax5.set_ylabel('water uptake by roots [-]')
-ax5.set_xlabel('time [d]')
-ax5.legend(zN[ii])
+ax5.plot(S_sim, '-')
+ax5.set_ylabel('water uptake by roots [m/s]')
+ax5.set_xlabel('depth [-]')
 
 # SODE = np.zeros(np.shape(hwODE.y))
 # for ii in np.arange(0, hwODE.t.size, 1):

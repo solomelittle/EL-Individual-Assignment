@@ -110,7 +110,7 @@ sPar = pd.Series(sPar)
 #%%  
 
 # Define Initial Conditions
-zRef = -4 # depth of water table
+zRef = -2 # depth of water table
 hwIni = zRef - zN
 
 
@@ -119,7 +119,7 @@ hwIni = zRef - zN
 # t_out = np.logspace(-14, np.log10(5*365), num=365)  # time
 #t_out = np.logspace(-14, np.log10(5*365),num=365) # Logarithmic! If we want days
 # t_out = np.linspace(0, 10*120, num=120*5)
-t_out = np.linspace(t_range[0],t_range[365],5*365)
+t_out = np.linspace(t_range[0],t_range[10],365)
 
 print('Solving unsaturated water flow problem')
 mt.tic()
