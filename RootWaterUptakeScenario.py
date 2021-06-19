@@ -4,7 +4,12 @@
 June 2021
 @author: eslittle
 Based on excerpts provided by T. Heimovaara and prior group work.
-To model a root-free scenario, replace 'affirmative' with 'no' in bPar.rootpresence 
+
+Model works for corn(maize) or a reference grass crop. 
+For corn, enter 'corn' in bPar.rootpresence. 
+For reference grass crop, enter 'grass' in bPar.rootpresence.
+To model a root-free scenario, enter 'no' in bPar.rootpresence.
+
 """
 import numpy as np
 import pandas as pd
@@ -42,7 +47,7 @@ meteo_data  = pd.read_excel('WieringermeerData_Meteo.xlsx')
 meteo_data['num_date'] = meteo_data['datetime'].astype(np.int64)/(1e9*3600*24)
 meteo_data.set_index('datetime',inplace=True)
 
-# set simulation time to numeric dates from boudary data...
+# set simulation time to numeric dates from boundary data...
 t_range = meteo_data['num_date'][5844:-1] #5479 for 2018
 taxis = meteo_data.index[5844:-1]
 
@@ -82,17 +87,21 @@ sPar = {'a': np.ones(np.shape(zN)) * 0.019*100,  # alpha[1/m]
         'betaW': 4.5e-10,  # compressibility of water 1/Pa
         'rhoW': 1000,  # density of water kg/m3
         'g': 9.81,  # gravitational constant m/s2
-        'h1': np.ones(np.shape(zN))*0,
-        'h2': np.ones(np.shape(zN))*-1,
-        'h3': np.ones(np.shape(zN))*-8.5,
-        'h4': np.ones(np.shape(zN))*-15,
-        }
+        'h1g': np.ones(np.shape(zN))*0, # grass crit pressure head 1 [m]
+        'h2g': np.ones(np.shape(zN))*-1, # grass crit pressure head 2 [m]
+        'h3g': np.ones(np.shape(zN))*-8.5, # grass crit pressure head 3 [m]
+        'h4g': np.ones(np.shape(zN))*-15, # grass crit pressure head 4 [m]
+        'h1c': np.ones(np.shape(zN))*0, # corn crit pressure head 1 [m]
+        'h2c': np.ones(np.shape(zN))*-0.3, # corn crit pressure head 2 [m]
+        'h3c': np.ones(np.shape(zN))*-6, # corn crit pressure head 3 [m]
+        'h4c': np.ones(np.shape(zN))*-80, # corn crit pressure head 4 [m]
+        } 
 sPar = pd.Series(sPar)
 
 # Boundary Parameters
 bPar = {'topBndFuncWat': BndqWatTop, #topBndFuncWat(t,bPar)
-        # ARE THERE ROOTS PRESENT? Yes roots: enter 'affirmative' /  No roots: enter 'negative'
-        'rootpresence': 'affirmative',
+        # ARE THERE ROOTS PRESENT? Yes roots: enter 'grass' or 'corn' /  No roots: enter 'no'
+        'rootpresence': 'corn',
         'potEv': pEV,
         'meteo_data': meteo_data,
         'qTop': -0.01,  # top flux
@@ -120,7 +129,7 @@ mt.toc()
 tOut2 = hwODE.t
 #theta_sim = RWU.thFun(hwODE,sPar)
 qw_sim = RWU.WaterFlux(tOut,hwODE.y,sPar,mDim,bPar)
-S_sim = RWU.s_root(tOut,hwODE.y, sPar, mDim, bPar)
+s_sim = RWU.s_root(tOut,hwODE.y, sPar, mDim, bPar)
 
 # %% Plot
 plt.close('all')
@@ -131,15 +140,17 @@ for ii in np.arange(0, nN, 2):
     ax1.plot(taxis, hwODE.y[ii, :], '-')
 
 ax1.grid(b=True)
+plt.title('Pressure head in the soil over the year 2019')
 ax1.set_ylabel('pressure head [m]')
 ax1.set_xlabel('time [d]') 
 
 #plot pressure head as a function of depth. Here we plot every time step
 fig2, ax2 = plt.subplots(figsize=(7, 7))
-for ii in np.arange(0, hwODE.t.size, 1):
+for ii in np.arange(171, 171+92, 1):
     ax2.plot(hwODE.y[:, ii], zN[:, 0], '-')
 
 ax2.grid(b=True)
+plt.title('Pressure head variation with depth in the summer season (June 21st - September 22nd')
 ax2.set_xlabel('pressure head [m]')
 ax2.set_ylabel('depth [m]')
 
@@ -153,10 +164,11 @@ for ii in np.arange(0, hwODE.t.size, 1):
   #  qwODE[:, ii] = RWU.DivWaterFlux(ii, hwTmp, sPar, mDim, bPar).reshape(1, nN)
 
 fig3, ax3 = plt.subplots(figsize=(7, 7))
-for ii in np.arange(0, hwODE.t.size, 1):
+for ii in np.arange(171, 171+92, 1): #hwODE.t.size
     ax3.plot(thODE[:, ii], zN[:, 0], '-')
 
 ax3.grid(b=True)
+plt.title('Water content variation with depth in the summer season (June 21st - September 22nd')
 ax3.set_xlabel('water content [-]')
 ax3.set_ylabel('depth [m]')
     
@@ -165,15 +177,27 @@ fig4, ax4 = plt.subplots(figsize=(7, 4))
    # ax4.plot(qwODE[:, ii], zN[:, 0], '-')
 # plot the flux as a function of time for diff depths
 ax4.plot(zN,qw_sim[0:-1], '-')
+plt.title('Water flux')
 ax4.set_ylabel('water flux [m/d]')
 ax4.set_xlabel('depth [m]')
 
-# fig5, ax5 = plt.subplots(figsize=(7, 4))
-
-# # plot the flux as a function of time for diff depths
-# ax5.plot(S_sim, '-')
-# ax5.set_ylabel('water uptake by roots [m/d]')
-# ax5.set_xlabel('depth [m]')
-
+if bPar.rootpresence == 'grass':
+    fig5, ax5 = plt.subplots(figsize=(7, 4))
+    for ii in np.arange(0, hwODE.t.size, 1):
+        ax5.plot(s_sim[:, ii], zN[:, 0], '-')
+        plt.title('Root water uptake for a grassy crop')
+        ax5.set_ylabel('depth [m]')
+        ax5.set_xlabel('root water uptake [m/d]')
+        ax5.set_ylim([-0.5,0])
+if bPar.rootpresence == 'corn':
+    fig5, ax5 = plt.subplots(figsize=(7, 4))
+    for ii in np.arange(0, hwODE.t.size, 1):
+        ax5.plot(s_sim[:, ii], zN[:, 0], '-')
+        plt.title('Root water uptake for maize')
+        ax5.set_ylabel('depth [m]')
+        ax5.set_xlabel('root water uptake [m/d]')
+        ax5.set_ylim([-5,0])
+else:
+    print('Note: no roots present, so there is no root sink function to plot.')
 plt.show()
 

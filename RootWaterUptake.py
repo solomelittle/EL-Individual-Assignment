@@ -58,13 +58,22 @@ def K(hw, sP, mDim): #Unsaturated hydraulic conductivity
     kIN[nIN - 1] = kN[nIN - 2]
     return kIN
 
-def alpharoot(hw, sP):
-    h1 = sP.h1
-    h2 = sP.h2
-    h3 = sP.h3
-    h4 = sP.h4
-    a=h1*(hw<=h4)+h1*(hw>=h1)+(hw-h4)/(h3-h4)*(hw>h4)*(hw<h3)+(hw>h3)*(hw<h2)+(hw-h1)/(h2-h1)*(hw<h1)*(hw>h2)
-  
+def alpharoot(hw, sP, bPar):
+    if bPar.rootpresence == 'grass':
+        h1 = sP.h1g
+        h2 = sP.h2g
+        h3 = sP.h3g
+        h4 = sP.h4g
+        a=h1*(hw<=h4)+h1*(hw>=h1)+(hw-h4)/(h3-h4)*(hw>h4)*(hw<h3)+(hw>h3)*(hw<h2)+(hw-h1)/(h2-h1)*(hw<h1)*(hw>h2)
+    if bPar.rootpresence == 'corn':  
+        h1 = sP.h1c
+        h2 = sP.h2c
+        h3 = sP.h3c
+        h4 = sP.h4c
+        a=h1*(hw<=h4)+h1*(hw>=h1)+(hw-h4)/(h3-h4)*(hw>h4)*(hw<h3)+(hw>h3)*(hw<h2)+(hw-h1)/(h2-h1)*(hw<h1)*(hw>h2)
+    else:
+        a=0
+        
     return a
 
 def betaroot(t,hw,mDim,sP):
@@ -84,8 +93,11 @@ def betaroot(t,hw,mDim,sP):
     return b
 
 def s_root (t,hw,sP,mDim, bPar):
+    
     pEv = bPar.potEv(t, bPar)
-    alpha = alpharoot(hw, sP)
+    if bPar.rootpresence == 'corn':
+        pEv = (0.87*(8/92)+1.10*(31/92)+0.78*(31/92)+0.27*(22/92))*pEv
+    alpha = alpharoot(hw, sP, bPar)
     beta = betaroot(t,hw,mDim,sP)
     S=alpha*beta*pEv
   
@@ -130,10 +142,10 @@ def DivWaterFlux(t, hw, sP, mDim, bPar): # RHS: f(t,y)
     ii = np.arange(0,nN)
     divqW[ii] = -(qW[ii + 1] - qW[ii]) / (dzIN[ii]) # Calculating flux divergence
     
-    if bPar.rootpresence == 'affirmative':
-        rateWF= (divqW[ii]-S[ii])/ Mass[ii] # Considering root water uptake term
-    else: 
-        rateWF= (divqW[ii])/ Mass[ii]
+    #if bPar.rootpresence == 'grass' or 'corn':
+    rateWF= (divqW[ii]-S[ii])/ Mass[ii] # Considering root water uptake term
+   # else: 
+        #rateWF= (divqW[ii])/ Mass[ii]
     return rateWF
 
 
